@@ -1,3 +1,5 @@
+https://dalyusufcan.github.io/3D-sudoku/
+
 # 3d sudoku — 4 × 4 × 4 Latin cube
 
 A fully client-side 3D Sudoku-style puzzle built with strict TypeScript, HTML, CSS and Three.js. The solver, generator, validator, difficulty analyzer and uniqueness checks are implemented in this repository. Three.js is the only runtime dependency; Vite and TypeScript are development tools.
