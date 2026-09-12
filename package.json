@@ -1,0 +1,21 @@
+{
+  "name": "3d-sudoku",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=24.0.0" },
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test tests/*.test.ts",
+    "build": "npm run typecheck && vite build",
+    "preview": "vite preview --host 127.0.0.1"
+  },
+  "dependencies": { "three": "0.185.1" },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/three": "0.185.4",
+    "typescript": "7.0.2",
+    "vite": "8.2.2"
+  }
+}
