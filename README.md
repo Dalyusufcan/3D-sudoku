@@ -111,7 +111,7 @@ Timer/session tests check no time before play, reset/abandon behavior, immediate
 
 `npm run build` creates a static `dist/`. Vite uses `base: './'`, so assets work under a repository subpath without embedding the repository name. There are no server routes.
 
-Push to a GitHub repository and select **Settings → Pages → GitHub Actions**. `.github/workflows/pages.yml` installs with the committed lockfile, checks types, runs tests, builds and deploys on `main`. Pull requests only check/build. Manual runs are supported. Hosting setup and publishing are separate from local implementation.
+Push to a GitHub repository and select **Settings → Pages → GitHub Actions**. `.github/workflows/pages.yml` installs with the committed lockfile (including platform-specific optional build dependencies), checks types, runs tests and builds on branch pushes and pull requests. Only the repository's default branch can publish, including manual runs. Deployment checks Pages configuration and queues behind any active deployment. The `github-pages` environment must allow the default branch. No separate Static HTML workflow is needed: this workflow publishes the built `dist/`, not the TypeScript source. Hosting setup and publishing are separate from local implementation.
 
 See the [Vite static deployment guide](https://vite.dev/guide/static-deploy#github-pages) and [Three.js OrbitControls documentation](https://threejs.org/docs/pages/OrbitControls.html).
 
