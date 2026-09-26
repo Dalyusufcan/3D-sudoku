@@ -668,8 +668,8 @@ kbd {
 }
 
 .line-cells button.given {
-  color: #4d5549;
-  background: #f0f2ed;
+  color: #3d4540;
+  font-weight: 650;
 }
 
 .line-cells button.selected {
@@ -679,9 +679,13 @@ kbd {
 }
 
 .line-cells button.conflict {
-  color: #b84b3e;
+  color: #c34d43;
   background: #fbece5;
   border-color: #d79887;
+}
+
+.line-cells button.conflict.selected {
+  box-shadow: 0 0 0 2px #c34d4326;
 }
 
 .entry-section {
@@ -766,15 +770,15 @@ kbd {
 }
 
 .clue-key {
-  background: #62695f;
+  background: #3d4540;
 }
 
 .entry-key {
-  background: #689450;
+  background: #416a54;
 }
 
 .conflict-key {
-  background: #c97f69;
+  background: #c34d43;
 }
 
 .page-footer {

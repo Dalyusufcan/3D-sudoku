@@ -61,11 +61,15 @@ test('editable values can be entered, changed, cleared, and undone without mutat
 });
 
 test('a duplicate player entry conflicts with its clue peer, and clearing removes conflicts', () => {
-  const original = selectCell(createGame(nearlyComplete()), 1);
+  const puzzle = emptyCube();
+  puzzle[0] = 1;
+  const original = selectCell(createGame(fixture(puzzle)), 1);
   const conflicting = enterValue(original, 1);
-  assert.ok(conflicting.conflicts.includes(0));
-  assert.ok(conflicting.conflicts.includes(1));
+  assert.deepEqual(conflicting.conflicts, [0, 1]);
   assert.equal(conflicting.complete, false);
+  const corrected = enterValue(conflicting, solution[1]!);
+  assert.deepEqual(corrected.conflicts, []);
+  assert.equal(corrected.complete, false);
   const cleared = enterValue(conflicting, 0);
   assert.deepEqual(cleared.conflicts, []);
   assert.equal(cleared.complete, false);
@@ -86,10 +90,11 @@ test('completion requires a full cube satisfying all constraints', () => {
 
 test('rule validation never auto-corrects entries against the stored solution', () => {
   // A sparse fixture isolates game rules from the separate generator uniqueness contract.
-  const original = selectCell(createGame(fixture(emptyCube())), 0);
-  const entered = enterValue(original, 4);
-  assert.notEqual(entered.values[0], original.generated.solution[0]);
-  assert.equal(entered.values[0], 4);
+  const index = toIndex({ x: 2, y: 0, z: 0 });
+  const original = selectCell(createGame(fixture(emptyCube())), index);
+  const entered = enterValue(original, 2);
+  assert.equal(original.generated.solution[index], 3);
+  assert.equal(entered.values[index], 2);
   assert.deepEqual(entered.conflicts, []);
   assert.equal(entered.complete, false);
 

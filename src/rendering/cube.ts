@@ -11,10 +11,19 @@ import { CELL_SPACING, cellPosition } from './positions.ts';
 import { axisOrigin, axisDirection } from './orientation.ts';
 
 const COLORS = {
-  ink: '#34433c', green: '#416a54', selected: '#345a44', conflict: '#c34d43',
+  ink: '#3d4540', green: '#416a54', selected: '#345a44', conflict: '#c34d43',
   x: '#408267', y: '#c89542', z: '#658ba6', background: '#f4f5f1',
 } as const;
 const AXES: readonly Axis[] = ['x', 'y', 'z'];
+
+export function cellColors(fixed: boolean, selected: boolean, conflict: boolean): {
+  emphasis: string | null; label: string;
+} {
+  return {
+    emphasis: conflict ? COLORS.conflict : selected ? COLORS.selected : null,
+    label: selected ? '#ffffff' : conflict ? COLORS.conflict : fixed ? COLORS.ink : COLORS.green,
+  };
+}
 
 interface CellVisual {
   readonly group: Group;
@@ -199,23 +208,22 @@ export function createCubeRenderer(
       const isRelated = active.has(index);
       const isConflict = conflicts.has(index);
       const isLayer = layer === null || toCoordinates(index).z === layer;
-      const ghost = selected !== null ? !isRelated : !isLayer;
+      const ghost = !isConflict && (selected !== null ? !isRelated : !isLayer);
       const axis = related === null ? undefined : AXES.find((candidate) => related[candidate].includes(index));
-      const tint = isConflict ? COLORS.conflict : isSelected ? COLORS.selected
-        : axis && isRelated ? COLORS[axis] : '#91a396';
+      const colors = cellColors(fixed, isSelected, isConflict);
+      const tint = colors.emphasis ?? (axis && isRelated ? COLORS[axis] : '#91a396');
       cell.mesh.material.color.set(isSelected ? tint : '#ffffff');
-      if (!isSelected && isRelated) cell.mesh.material.color.lerp(new Color(tint), 0.15);
+      if (!isSelected && (isConflict || isRelated)) cell.mesh.material.color.lerp(new Color(tint), 0.15);
       cell.mesh.material.opacity = ghost ? 0.045 : isSelected ? 0.97 : value === 0 ? 0.24 : 0.73;
       cell.edge.material.color.set(isConflict || isSelected || isRelated ? tint : '#9aa99c');
-      cell.edge.material.opacity = ghost ? 0.09 : isSelected ? 1 : isRelated ? 0.87 : 0.45;
+      cell.edge.material.opacity = ghost ? 0.09 : isConflict || isSelected ? 1 : isRelated ? 0.87 : 0.45;
       cell.group.scale.setScalar(isSelected ? 1.08 : 1);
-      const color = isSelected ? '#ffffff' : isConflict ? COLORS.conflict : fixed ? COLORS.ink : COLORS.green;
-      const labelKey = `${value}:${color}:${fixed}`;
+      const labelKey = `${value}:${colors.label}:${fixed}`;
       if (cell.labelKey !== labelKey) {
-        cell.label.material.map = textTexture(value === 0 ? '·' : String(value), color, fixed);
+        cell.label.material.map = textTexture(value === 0 ? '·' : String(value), colors.label, fixed);
         cell.labelKey = labelKey;
       }
-      // Ghost labels are suppressed so the ten active cells carry the visual weight.
+      // Keep conflicts visible even when they are outside the focused lines or depth layer.
       cell.label.visible = !ghost;
       cell.label.material.opacity = selected !== null ? 1 : value === 0 ? 0.5 : 0.94;
       cell.label.renderOrder = isSelected ? 5 : isRelated ? 4 : 3;

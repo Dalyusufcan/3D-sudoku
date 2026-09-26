@@ -2,8 +2,18 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { PerspectiveCamera, Vector3 } from 'three';
 import { axisLinesForCell, CELL_COUNT, toCoordinates, toIndex } from '../src/core/cube.ts';
+import { cellColors } from '../src/rendering/cube.ts';
 import { CAMERA_FOV, focusFrame, overviewDistance } from '../src/rendering/framing.ts';
 import { CELL_SPACING, cellPosition } from '../src/rendering/positions.ts';
+
+test('cell colors keep clues distinct and let conflicts override selection and clue styling', () => {
+  assert.deepEqual(cellColors(true, false, false), { emphasis: null, label: '#3d4540' });
+  assert.deepEqual(cellColors(false, false, false), { emphasis: null, label: '#416a54' });
+  assert.deepEqual(cellColors(false, true, false), { emphasis: '#345a44', label: '#ffffff' });
+  assert.deepEqual(cellColors(true, false, true), { emphasis: '#c34d43', label: '#c34d43' });
+  assert.deepEqual(cellColors(false, false, true), { emphasis: '#c34d43', label: '#c34d43' });
+  assert.deepEqual(cellColors(false, true, true), { emphasis: '#c34d43', label: '#ffffff' });
+});
 
 test('all 64 rendered cells have distinct, centered positions with upward Y and inward Z', () => {
   const positions = Array.from({ length: CELL_COUNT }, (_, index) => cellPosition(index));
