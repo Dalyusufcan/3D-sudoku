@@ -29,7 +29,7 @@ export function createInterface(root: HTMLElement, actions: Actions) {
   // This template is static. All variable text below uses textContent or value.
   root.innerHTML = `
     <header class="site-header">
-      <a class="brand" href="./" aria-label="3d sudoku home">3d sudoku</a>
+      <div class="brand-group"><a class="brand" href="./" aria-label="3d sudoku home">3d sudoku</a><span class="header-uniqueness">One solution</span></div>
       <span class="header-caption">A PUZZLE IN THREE DIMENSIONS</span>
       <div class="header-actions"><button class="text-button" id="rules-button">How to play <span aria-hidden="true">↗</span></button><button class="primary-button" id="new-button"><span aria-hidden="true">＋</span> New puzzle</button></div>
     </header>
@@ -52,7 +52,6 @@ export function createInterface(root: HTMLElement, actions: Actions) {
     </section>
     <section id="generating-screen" class="start-screen" hidden role="status"><div class="generation-spinner" aria-hidden="true"></div><h1>Finding your next perspective.</h1><p>Checking the challenge. Verifying one solution.</p></section>
     <main id="play-screen" hidden>
-      <section class="intro"><div><div class="eyebrow"><span class="status-dot"></span>4 × 4 × 4 LATIN CUBE</div><h1>Find your perspective.</h1><p>Every line, in every direction. Just the numbers 1–4.</p></div><div class="intro-note"><span>64 cells</span><span>48 lines</span><span>One solution</span></div></section>
       <div class="workspace">
         <section class="cube-card" aria-label="Interactive 3D puzzle">
           <div class="scene-top"><span class="scene-title"><span class="status-dot"></span><span id="scene-mode">THE WHOLE PICTURE</span></span><button id="overview-button" class="small-button" title="Restore the original camera and leave focus">↺ Reset view</button></div>

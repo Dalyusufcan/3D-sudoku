@@ -147,6 +147,13 @@ a {
   border-bottom: 1px solid var(--border);
 }
 
+.brand-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+}
+
 .brand {
   display: flex;
   align-items: center;
@@ -154,6 +161,12 @@ a {
   font-weight: 650;
   letter-spacing: -.8px;
   white-space: nowrap;
+}
+
+.header-uniqueness {
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: .2px;
 }
 
 .header-caption {
@@ -223,13 +236,6 @@ main {
   padding: 24px clamp(20px, 3vw, 56px) 0;
 }
 
-.intro {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  margin-bottom: 20px;
-}
-
 .eyebrow {
   font-size: 10px;
   letter-spacing: 1.75px;
@@ -255,32 +261,6 @@ h1 {
   letter-spacing: -1.65px;
   line-height: 1.2;
   margin: 12px 0 9px;
-}
-
-.intro p {
-  margin: 0;
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.6;
-}
-
-.intro-note {
-  display: flex;
-  gap: 20px;
-  color: #7c857e;
-  font-size: 11px;
-  padding-bottom: 4px;
-}
-
-.intro-note span+span {
-  position: relative;
-}
-
-.intro-note span+span:before {
-  content: "·";
-  position: absolute;
-  left: -12px;
-  color: #a3afa2;
 }
 
 .workspace {
@@ -981,10 +961,6 @@ dialog>.primary-button {
   .play-panel {
     padding: 20px;
   }
-  .intro-note {
-    gap: 16px;
-    font-size: 10px;
-  }
   .scene-bottom {
     padding-left: 17px;
     padding-right: 17px;
@@ -1039,17 +1015,8 @@ dialog>.primary-button {
   main {
     padding: 16px clamp(12px, 3vw, 24px) 0;
   }
-  .intro {
-    margin-bottom: 18px;
-  }
-  .intro-note {
-    display: none;
-  }
   h1 {
     font-size: 32px;
-  }
-  .intro p {
-    font-size: 11px;
   }
   .workspace {
     grid-template-columns: 1fr;
