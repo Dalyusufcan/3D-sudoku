@@ -60,7 +60,7 @@
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes success-pop { 0% { opacity: 0; transform: scale(.65); } 65% { opacity: 1; transform: scale(1.08); } 100% { transform: scale(1); } }
 @keyframes cube-success { 40% { box-shadow: 0 0 0 8px #a9c59055, 0 0 35px #b6d19c66; } }
-@media (max-width: 760px) {
+@media (max-width: 900px) {
   .start-screen { min-height: calc(100dvh - 75px); padding: 40px 24px; }
   .difficulty-options { flex-direction: column; max-width: 390px; gap: 12px; margin: 20px 0 5px; }
   .difficulty-options button { position: relative; padding: 18px 22px 18px 65px; }
@@ -138,8 +138,8 @@ a {
 
 .site-header {
   height: 96px;
-  max-width: 1440px;
-  padding: 0 5%;
+  max-width: 1800px;
+  padding: 0 clamp(20px, 3vw, 56px);
   margin: auto;
   display: flex;
   align-items: center;
@@ -218,16 +218,16 @@ a {
 }
 
 main {
-  max-width: 1440px;
+  max-width: 1800px;
   margin: auto;
-  padding: 43px 5% 0;
+  padding: 24px clamp(20px, 3vw, 56px) 0;
 }
 
 .intro {
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
-  margin-bottom: 30px;
+  margin-bottom: 20px;
 }
 
 .eyebrow {
@@ -331,7 +331,7 @@ h1 {
 }
 
 #viewport {
-  height: 530px;
+  height: clamp(600px, calc(100dvh - 280px), 820px);
   position: relative;
 }
 
@@ -951,17 +951,11 @@ dialog>.primary-button {
 }
 
 @media(min-width:1450px) {
-  #viewport {
-    height: 580px;
-  }
   .play-panel {
     padding: 30px;
   }
   .focus-section {
     min-height: 284px;
-  }
-  .workspace {
-    grid-template-columns: minmax(0,1fr) 345px;
   }
   .scene-hint {
     bottom: 121px;
@@ -970,7 +964,7 @@ dialog>.primary-button {
 
 @media(max-width:1050px) {
   .site-header {
-    padding: 0 4%;
+    padding: 0 3%;
     gap: 22px;
   }
   .header-caption {
@@ -978,7 +972,7 @@ dialog>.primary-button {
     letter-spacing: 1px;
   }
   main {
-    padding: 32px 4% 0;
+    padding: 24px 3% 0;
   }
   .workspace {
     grid-template-columns: minmax(0,1fr) 280px;
@@ -1021,10 +1015,10 @@ dialog>.primary-button {
   }
 }
 
-@media(max-width:760px) {
+@media(max-width:900px) {
   .site-header {
     height: 75px;
-    padding: 0 5%;
+    padding: 0 clamp(12px, 3vw, 24px);
   }
   .header-caption {
     display: none;
@@ -1043,10 +1037,10 @@ dialog>.primary-button {
     font-size: 22px;
   }
   main {
-    padding: 26px 5% 0;
+    padding: 16px clamp(12px, 3vw, 24px) 0;
   }
   .intro {
-    margin-bottom: 24px;
+    margin-bottom: 18px;
   }
   .intro-note {
     display: none;
@@ -1062,7 +1056,7 @@ dialog>.primary-button {
     gap: 18px;
   }
   #viewport {
-    height: 450px;
+    height: clamp(460px, 65dvh, 600px);
   }
   .scene-top {
     top: 17px;
@@ -1168,7 +1162,7 @@ dialog>.primary-button {
 
 @media(max-width:480px) {
   #viewport {
-    height: 385px;
+    height: clamp(420px, 60dvh, 520px);
   }
   .play-panel {
     display: block;
