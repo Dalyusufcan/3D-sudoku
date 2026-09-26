@@ -311,7 +311,7 @@ h1 {
 }
 
 #viewport {
-  height: clamp(600px, calc(100dvh - 280px), 820px);
+  height: clamp(460px, calc(100dvh - 300px), 820px);
   position: relative;
 }
 
@@ -1233,6 +1233,53 @@ dialog>.primary-button {
   }
   .scene-top .small-button {
     padding: 6px 8px;
+  }
+}
+
+@media(min-width:901px) and (max-height:880px) {
+  .site-header {
+    height: 76px;
+  }
+  main {
+    padding-top: 12px;
+  }
+  #viewport {
+    height: clamp(460px, calc(100dvh - 250px), 630px);
+  }
+  .play-panel {
+    padding: 16px;
+  }
+  .focus-section {
+    min-height: 210px;
+    margin-top: 12px;
+    padding-top: 14px;
+  }
+  .focus-placeholder {
+    height: 100px;
+  }
+  .line-row {
+    margin: 6px 0;
+  }
+  .line-cells button {
+    height: 32px;
+  }
+  .entry-section {
+    margin-top: 12px;
+    padding-top: 12px;
+  }
+  .number-pad button {
+    height: 44px;
+  }
+  .cell-key {
+    margin-top: 12px;
+    padding-top: 12px;
+  }
+  .page-footer {
+    flex-wrap: nowrap;
+    margin: 10px 0;
+  }
+  .footer-note {
+    flex-basis: auto;
   }
 }
 
