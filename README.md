@@ -26,6 +26,7 @@ npm run dev
 | `npm run dev` | Local Vite development server |
 | `npm run typecheck` | Strict TypeScript checks, including tests |
 | `npm test` | Node's built-in automated test runner |
+| `npm run calibrate -- 1000 verification-v2` | Verify 1,000 seeded puzzles per tier and report generation timings |
 | `npm run build` | Type-check and produce static `dist/` |
 | `npm run preview` | Inspect the production build locally |
 
@@ -66,46 +67,61 @@ Navigation uses puzzle coordinates, independent of camera rotation. Edges clamp 
 
 The core represents the cube as a flat 64-element array with X varying fastest; conversion and the 48-line topology are centralized. Validation reports invalid, partial and completed boards explicitly.
 
-The repository's backtracking solver chooses the smallest candidate set (MRV), with four-bit line masks and immediate single-candidate propagation. Solution counting stops at a configurable limit; uniqueness checks stop upon finding a second solution.
+The repository's backtracking solver chooses the smallest candidate set (MRV), with four-bit line masks and immediate single-candidate propagation. Solution counting stops upon finding a second solution or reaching an explicit node budget. A partial count of one is **not** a uniqueness proof: `budgetExceeded` must also be false.
 
 Generation constructs a full cube by randomized solving, shuffles clue-removal order, then removes each clue only if exactly one solution remains. It never uses a preloaded solution database. A seeded FNV-1a/Mulberry32 generator and Fisher–Yates shuffle make results reproducible within this algorithm version.
 
-Difficulty uses **both a clue profile and an arrangement-sensitive solving score**:
+Difficulty is determined by **the deductions needed to make progress**, using a separate logical solver that reads only the puzzle's visible clues:
 
-| Level | Target clue range | Required score |
+| Level | Acceptance rule | Typical reasoning |
 | --- | --- | --- |
-| Easy | 32–38 | Below 12 |
-| Medium | 24–30 | 12 to below 24 |
-| Hard | 16–22 | 24 or above |
+| Easy | Naked singles solve the whole cube | Eliminate values already present in the three intersecting lines; fill a cell with one candidate |
+| Medium | Naked singles stall; hidden singles and naked pairs finish the cube | Find a digit's only possible place in a line, or reserve two digits for two cells, then propagate deductions |
+| Hard | All implemented logical techniques stall; exploring alternatives completes the cube | Make an assumption, propagate its consequences, and backtrack when a contradiction is found |
 
-The score combines initial average candidates, the number of simultaneous naked-single rounds, cells remaining when singles stall, and normalized solver search nodes. Clue count is checked separately and is not part of the score formula. Equal-clue puzzles can receive different categories; this is covered by a regression test.
+The logical solver prefers naked singles, then hidden singles, then naked pairs, repeating to a fixed point. Its candidate eliminations use only the same 48 axis lines as gameplay. Analysis records simultaneous singles rounds, stalled cells, hidden-single placements, pair eliminations, alternative branches, contradictions, and maximum assumption depth. These explain the classification and help calibration; neither raw search nodes nor search depth sets the category. The old weighted score and clue-count acceptance bands have been removed. Tests include Easy and Hard puzzles with the same seven clues, and verify that category survives digit relabeling and cube coordinate/axis permutations.
 
-`generateForDifficulty` analyzes each unique candidate and retries mismatches, with a deterministic budget of 12 attempts. Targets, thresholds and the budget are centralized in `src/core/difficulty*.ts`. If the budget is exhausted, it returns the closest unique candidate and the UI explicitly reports its estimated category. Correctness takes priority over difficulty calibration. These levels are a practical heuristic, not an academically validated human difficulty model or a guarantee that Hard requires guessing.
+Sampling aims for 24 clues for Easy to keep the board approachable. For Medium and Hard it tries removing every clue once, retaining each removal only after an exhaustive uniqueness proof. These two tiers have overlapping clue counts (about seven on average in calibration), but require different reasoning. A removal rejected for ambiguity cannot become unique after further removals, so an additional removal pass is unnecessary. A search-budget interruption can leave extra clues; the independent rating still decides acceptance.
+
+`generateForDifficulty` uses deterministic rejection sampling with at most 96 attempts. Each attempt has a total generation budget of 20,000 search nodes; rating has a separate 20,000-node uniqueness budget and at most 512 speculative branches. Invalid, ambiguous, unsatisfiable, or incompletely analyzed candidates are rejected. The limits are centralized in the core modules and do not depend on wall-clock speed. Exhaustion throws `DifficultyGenerationError`; **a differently rated puzzle is never substituted**.
+
+Browser generation runs in a disposable module worker. Cancellation, returning home, worker failures, and a 15-second watchdog terminate it; stale responses cannot start a discarded session. A generation failure returns to difficulty selection with an explanation, and the next choice uses a fresh seed. The timer starts only after a successful result and graphics initialization. The worker adds no runtime dependency and is bundled by Vite for static hosting.
+
+These tiers are a transparent computational estimate, not a validated human difficulty scale. Hard means the implemented logical repertoire stalled; a human may spot another deduction and avoid guessing. Search metrics depend on branching order, and a long chain of singles can still challenge a beginner. No claim is made that a deeper machine search is proportionally harder for a person. Human playtesting remains the next step for perceptual calibration.
 
 The original low-level `generatePuzzle(seed, targetClues)` remains available for core use and tests; normal gameplay uses rated generation. Its default of 32 is no longer the gameplay difficulty policy.
 
 A seed plus the selected difficulty reproduces the same puzzle within this generator version. The seed field reopens difficulty selection. Seeds and URL inputs accept only 1–48 ASCII letters, digits, underscores and hyphens. Future algorithm changes may change seed results.
 
-A local Node calibration of 150 rated puzzles (50 per level) matched every requested band, with a maximum around 4.8 ms. Tests print current multi-seed timings. These are measurements on the development machine, not performance guarantees. Main-thread generation and individual meshes remain simpler than workers or instancing at this measured scale.
+A fresh Node 24 verification run (`npm run calibrate -- 1000 verification-v2`) checked 3,000 puzzles, independently recounting solutions and checking technique-tier boundaries, fixed clues and all line constraints. All 3,000 matched and were unique:
+
+| Level | Mean generation | 95th percentile | Maximum | Maximum attempts |
+| --- | --- | --- | --- | --- |
+| Easy | 0.57 ms | 0.72 ms | 4.75 ms | 1 |
+| Medium | 5.10 ms | 13.90 ms | 57.90 ms | 25 |
+| Hard | 21.24 ms | 56.66 ms | 141.02 ms | 57 |
+
+An earlier 3,000-puzzle run exposed two Hard seeds that exhausted a 64-attempt budget; they matched on attempts 73 and 72, motivating the current 96-attempt limit. Finite sampling cannot guarantee every seed will match, so the recoverable failure path is part of the design. Timings exclude worker startup, rendering, and the calibration script's independent checks, and are measurements on this development machine, not browser or mobile performance guarantees. The calibration command reports failures and exits nonzero if any occur.
 
 ## Architecture and error handling
 
 | Location | Responsibility |
 | --- | --- |
-| `src/core/` | Coordinates, validation, custom solving/generation, uniqueness, difficulty analysis |
-| `src/game/` | Immutable moves and selection, session transitions, pure timestamp-based timer |
+| `src/core/` | Coordinates, validation, bounded solving/generation, uniqueness, logical technique analysis, worker entry point |
+| `src/game/` | Immutable moves and selection, session transitions, timer, cancellable worker lifecycle |
 | `src/rendering/` | Three.js cells, labels, raycasting, camera framing and orientation |
 | `src/ui/` | DOM controls, start/difficulty/result screens, seed validation |
 | `src/main.ts` | Composition, lifecycle, timer scheduling and browser error boundary |
 | `tests/` | Core invariants, difficulty/retries, game/session/timer/navigation and rendering mathematics |
+| `scripts/calibrate-difficulty.ts` | Repeatable sample verification and performance reporting |
 
 The core does not depend on DOM or Three.js. Rendering does not solve puzzles. No frontend framework or external puzzle/CSP library is used.
 
-Invalid moves, contradictions and difficulty mismatches are ordinary domain results. Browser error/rejection listeners stop interaction and present a safe recovery message for unexpected failures. WebGL initialization has a local recovery boundary. Dynamic text uses safe DOM properties; no eval, dynamic user code, secrets or API keys are present.
+Invalid moves, contradictions and unsuccessful generation are ordinary domain outcomes. Generation errors allow retry without reloading; other unexpected browser errors/rejections stop interaction and present a recovery message. WebGL initialization has a local recovery boundary. Dynamic text uses safe DOM properties; no eval, dynamic user code, secrets or API keys are present.
 
 ## Tests
 
-The suite preserves the original tests and adds rated generation across all three levels, equal-clue category differences, deterministic retries and unique fallback behavior. It verifies clue retention and all 48 line permutations over multiple seeds.
+The suite preserves the original rule, game, session and rendering checks, and updates difficulty tests for technique tiers and explicit exhaustion. It checks 150 rated puzzles (50 per level), equal-clue category differences, symmetry invariance, deterministic retries, partial uniqueness searches, safe clue restoration, and malformed/ambiguous boards. Frozen logical fixtures verify deduction soundness against the independent counting solver, including exclusions made by pairs and contradictions found during alternative exploration. Worker lifecycle tests cover success, cancellation, stale responses, startup/transport errors, and timeout cleanup.
 
 Timer/session tests check no time before play, reset/abandon behavior, immediate completion freeze and preserved final time. Navigation tests cover every cell and all WASD/QE directions, bounds and related lines. Rendering tests verify positions, shared-origin math, and projected focus bounds across 1,920 selection/view combinations. No pixel-perfect renderer tests or test framework dependency is used.
 

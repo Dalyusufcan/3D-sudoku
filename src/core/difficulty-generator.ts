@@ -7,7 +7,7 @@ export const DIFFICULTY_PROFILES = {
   medium: { targetClues: 0 },
   hard: { targetClues: 0 },
 } as const;
-export const DIFFICULTY_ATTEMPT_BUDGET = 64;
+export const DIFFICULTY_ATTEMPT_BUDGET = 96;
 
 export interface RatedPuzzle extends GeneratedPuzzle {
   readonly difficulty: Difficulty;

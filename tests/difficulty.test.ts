@@ -77,6 +77,15 @@ test('analyzer returns an explicit invalid outcome and accepts exactly three dif
   for (const value of [null, '', 'expert', 'Easy', '<script>']) assert.equal(isDifficulty(value), false);
 });
 
+test('calibration outliers succeed within the expanded deterministic attempt budget', () => {
+  for (const seed of ['heldout-v2-209', 'heldout-v2-689']) {
+    const result = generateForDifficulty(seed, 'hard');
+    assert.ok(result.attempts > 64 && result.attempts <= DIFFICULTY_ATTEMPT_BUDGET);
+    assert.equal(result.analysis.category, 'hard');
+    assert.equal(countSolutions(result.puzzle), 1);
+  }
+});
+
 test('technique categories survive digit relabeling, axis permutations and coordinate permutations', () => {
   const permutations = [[0, 1, 2], [0, 2, 1], [1, 0, 2], [1, 2, 0], [2, 0, 1], [2, 1, 0]];
   for (const difficulty of DIFFICULTIES) {
