@@ -17,6 +17,7 @@ function fixture(puzzle: CellValue[]): GeneratedPuzzle {
     fixed: puzzle.map((value) => value !== 0),
     seed: 'game-test',
     stats: {
+      budgetExceeded: false,
       generationMs: 0,
       solutionCountCalls: 0,
       searchNodes: 0,

@@ -1,17 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { emptyCube, type CellValue } from '../src/core/cube.ts';
+import { emptyCube } from '../src/core/cube.ts';
 import { solveLogically, exploreAlternatives } from '../src/core/logical-solver.ts';
 import { countSolutions, solve } from '../src/core/solver.ts';
 import { validateCube } from '../src/core/validation.ts';
 
-// Frozen, independently unique examples; no dependency on generator seed mappings.
-export const LOGIC_FIXTURES = {
-  easy: '0002000010000003000000000030000030000000000000000000200000100000',
-  medium: '0300000300000100000000002003000000020000000000000000000000003010',
-  hard: '0000000000000000000000313000000002010000000000000000000000200010',
-};
-export const boardFrom = (text: string): CellValue[] => Array.from(text, value => Number(value) as CellValue);
+import { LOGIC_FIXTURES, boardFrom } from './fixtures/difficulty.ts';
 
 test('direct deductions solve Easy; Medium needs line deductions; Hard stalls after pairs', () => {
   for (const [tier, text] of Object.entries(LOGIC_FIXTURES)) {

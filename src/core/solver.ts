@@ -11,6 +11,8 @@ export interface SolutionCountResult extends SolverResult {
   readonly count: number;
   /** The requested count was reached, so remaining branches were not explored. */
   readonly cutoffReached: boolean;
+  /** Search stopped before the requested count or an exhaustive proof. */
+  readonly budgetExceeded: boolean;
 }
 
 const ALL_DIGITS_MASK = 0b1111;
@@ -21,12 +23,15 @@ const BIT_COUNTS = [0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4] as const;
  * three four-bit line masks make candidate calculation and undo inexpensive.
  * Random candidate order is used only when constructing a fresh complete cube.
  */
-export function analyzeSolutions(cube: Cube, limit = 2, random?: RandomSource): SolutionCountResult {
+export function analyzeSolutions(cube: Cube, limit = 2, random?: RandomSource, nodeBudget = Infinity): SolutionCountResult {
   if (!Number.isSafeInteger(limit) || limit < 1) {
     throw new RangeError('The solution limit must be a positive safe integer.');
   }
+  if (nodeBudget !== Infinity && (!Number.isSafeInteger(nodeBudget) || nodeBudget < 0)) {
+    throw new RangeError('The node budget must be a nonnegative safe integer or Infinity.');
+  }
   if (!validateCube(cube).valid) {
-    return { count: 0, solution: null, nodes: 0, cutoffReached: false };
+    return { count: 0, solution: null, nodes: 0, cutoffReached: false, budgetExceeded: false };
   }
 
   const board = [...cube];
@@ -42,9 +47,11 @@ export function analyzeSolutions(cube: Cube, limit = 2, random?: RandomSource): 
   let count = 0;
   let nodes = 0;
   let solution: CellValue[] | null = null;
+  let budgetExceeded = false;
 
   function search(): void {
-    if (count >= limit) return;
+    if (count >= limit || budgetExceeded) return;
+    if (nodes >= nodeBudget) { budgetExceeded = true; return; }
     nodes += 1;
     let bestIndex = -1;
     let bestMask = 0;
@@ -81,12 +88,12 @@ export function analyzeSolutions(cube: Cube, limit = 2, random?: RandomSource): 
       // Validation and candidates guarantee that no other cell in these lines has this bit.
       for (const lineIndex of cellLines) lineMasks[lineIndex] = lineMasks[lineIndex]! & ~bit;
       board[bestIndex] = 0;
-      if (count >= limit) break;
+      if (count >= limit || budgetExceeded) break;
     }
   }
 
   search();
-  return { count, solution, nodes, cutoffReached: count >= limit };
+  return { count, solution, nodes, cutoffReached: count >= limit, budgetExceeded };
 }
 
 export function solve(cube: Cube): SolverResult {

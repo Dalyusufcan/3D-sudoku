@@ -1,58 +1,61 @@
-import { CELL_COUNT, DIGITS, axisLinesForCell, type CellValue, type Cube } from './cube.ts';
-import { solve } from './solver.ts';
+import { CELL_COUNT, type Cube } from './cube.ts';
+import { exploreAlternatives, solveLogically } from './logical-solver.ts';
+import { analyzeSolutions } from './solver.ts';
 
 export const DIFFICULTIES = ['easy', 'medium', 'hard'] as const;
 export type Difficulty = (typeof DIFFICULTIES)[number];
 export const DIFFICULTY_LABELS: Record<Difficulty, string> = { easy: 'Easy', medium: 'Medium', hard: 'Hard' };
+export const ANALYSIS_NODE_BUDGET = 20_000;
 
 export interface DifficultyAnalysis {
   readonly category: Difficulty;
-  readonly score: number;
+  readonly requiredTechnique: 'naked-single' | 'hidden-single' | 'naked-pair' | 'alternatives';
   readonly clueCount: number;
-  readonly averageCandidates: number;
+  /** Simultaneous naked-single rounds and unresolved cells before line reasoning. */
   readonly singlesRounds: number;
   readonly stalledCells: number;
+  readonly nakedSingles: number;
+  readonly hiddenSingles: number;
+  readonly pairEliminations: number;
+  readonly logicalStalledCells: number;
+  /** Diagnostic work, never thresholds for the category. */
   readonly searchNodes: number;
+  readonly branches: number;
+  readonly contradictions: number;
+  readonly maxDepth: number;
 }
 
 export function isDifficulty(value: unknown): value is Difficulty {
   return typeof value === 'string' && DIFFICULTIES.some(difficulty => difficulty === value);
 }
 
-function candidates(board: Cube, index: number): readonly CellValue[] {
-  const lines = axisLinesForCell(index);
-  const used = new Set([...lines.x, ...lines.y, ...lines.z].map(peer => board[peer]));
-  return DIGITS.filter(value => !used.has(value));
-}
-
-/** Arrangement matters: measure candidate ambiguity and progress through simultaneous singles. */
+/**
+ * Technique tiers, not clue/score bands. Reject invalid, ambiguous, unsatisfiable,
+ * or over-budget boards. No stored solution is supplied to the logical solver.
+ */
 export function analyzeDifficulty(puzzle: Cube): DifficultyAnalysis | null {
-  const solved = solve(puzzle);
-  if (solved.solution === null) return null;
-  const board = [...puzzle];
-  const emptyCount = board.filter(value => value === 0).length;
-  const totalCandidates = board.reduce<number>((total, value, index) => total + (value === 0 ? candidates(board, index).length : 0), 0);
-  const averageCandidates = emptyCount === 0 ? 1 : totalCandidates / emptyCount;
-  let singlesRounds = 0;
-  while (true) {
-    const singles: { index: number; value: CellValue }[] = [];
-    board.forEach((value, index) => {
-      if (value !== 0) return;
-      const allowed = candidates(board, index);
-      if (allowed.length === 1) singles.push({ index, value: allowed[0]! });
-    });
-    if (singles.length === 0) break;
-    singlesRounds += 1;
-    for (const single of singles) board[single.index] = single.value;
-  }
-  const stalledCells = board.filter(value => value === 0).length;
-  // Clue count is checked separately by generation, not used to calculate this score.
-  const score = Math.round((20 * (averageCandidates - 1)
-    + 2 * Math.max(0, singlesRounds - 1) + 1.5 * stalledCells
-    + 8 * Math.log2(Math.max(1, solved.nodes / (emptyCount + 1)))) * 100) / 100;
+  const verified = analyzeSolutions(puzzle, 2, undefined, ANALYSIS_NODE_BUDGET);
+  if (verified.count !== 1 || verified.budgetExceeded) return null;
+  const direct = solveLogically(puzzle, 'singles');
+  const logic = direct.status === 'solved' ? direct : solveLogically(puzzle);
+  if (logic.status === 'contradiction') return null;
+  const category: Difficulty = direct.status === 'solved' ? 'easy' : logic.status === 'solved' ? 'medium' : 'hard';
+  const search = category === 'hard' ? exploreAlternatives(logic.board) : null;
+  if (search !== null && !search.solved) return null;
   return {
-    category: score < 12 ? 'easy' : score < 24 ? 'medium' : 'hard',
-    score, clueCount: CELL_COUNT - emptyCount, averageCandidates,
-    singlesRounds, stalledCells, searchNodes: solved.nodes,
+    category,
+    requiredTechnique: category === 'hard' ? 'alternatives' : logic.stats.pairEliminations > 0
+      ? 'naked-pair' : logic.stats.hiddenSingles > 0 ? 'hidden-single' : 'naked-single',
+    clueCount: puzzle.filter(value => value !== 0).length,
+    singlesRounds: direct.stats.singlesRounds,
+    stalledCells: direct.board.filter(value => value === 0).length,
+    nakedSingles: logic.stats.nakedSingles,
+    hiddenSingles: logic.stats.hiddenSingles,
+    pairEliminations: logic.stats.pairEliminations,
+    logicalStalledCells: CELL_COUNT - logic.board.filter(value => value !== 0).length,
+    searchNodes: verified.nodes,
+    branches: search?.branches ?? 0,
+    contradictions: search?.contradictions ?? 0,
+    maxDepth: search?.maxDepth ?? 0,
   };
 }

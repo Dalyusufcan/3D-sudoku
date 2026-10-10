@@ -13,7 +13,7 @@ import {
   type CellValue,
   type Cube,
 } from '../src/core/cube.ts';
-import { DEFAULT_TARGET_CLUES, generatePuzzle } from '../src/core/generator.ts';
+import { DEFAULT_TARGET_CLUES, generatePuzzle, GenerationBudgetError } from '../src/core/generator.ts';
 import { createSeededRandom, shuffled } from '../src/core/random.ts';
 import { analyzeSolutions, countSolutions, solve } from '../src/core/solver.ts';
 import { validateCube } from '../src/core/validation.ts';
@@ -147,7 +147,7 @@ test('duplicate input has no solution', () => {
   const cube = emptyCube();
   cube[0] = 1;
   cube[1] = 1;
-  assert.deepEqual(analyzeSolutions(cube), { count: 0, solution: null, nodes: 0, cutoffReached: false });
+  assert.deepEqual(analyzeSolutions(cube), { count: 0, solution: null, nodes: 0, cutoffReached: false, budgetExceeded: false });
   assert.equal(solve(cube).solution, null);
 });
 
@@ -209,6 +209,33 @@ test('ambiguous input stops at each configured solution limit', () => {
   for (const limit of [0, -1, 1.5, Infinity, NaN]) {
     assert.throws(() => countSolutions(empty, limit), RangeError);
   }
+});
+
+test('bounded solution counting distinguishes an incomplete search from a uniqueness proof', () => {
+  const cube = emptyCube();
+  const first = analyzeSolutions(cube, 1);
+  const partial = analyzeSolutions(cube, 2, undefined, first.nodes);
+  assert.equal(partial.count, 1);
+  assert.equal(partial.budgetExceeded, true);
+  assert.equal(partial.cutoffReached, false);
+  assert.equal(partial.nodes, first.nodes);
+  assert.equal(analyzeSolutions(cube, 2, undefined, 0).budgetExceeded, true);
+  const complete = analyzeSolutions(knownSolution(), 2, undefined, 1);
+  assert.equal(complete.count, 1);
+  assert.equal(complete.budgetExceeded, false);
+  assert.deepEqual(cube, emptyCube());
+  for (const budget of [-1, 0.5, NaN]) assert.throws(() => analyzeSolutions(cube, 2, undefined, budget), RangeError);
+});
+
+test('generation restores a clue when its uniqueness proof exceeds the work budget', () => {
+  const full = generatePuzzle('bounded-removal', 64);
+  const bounded = generatePuzzle('bounded-removal', 0, full.stats.searchNodes + 3);
+  assert.equal(bounded.stats.budgetExceeded, true);
+  assert.ok(bounded.stats.searchNodes <= full.stats.searchNodes + 3);
+  assert.equal(countSolutions(bounded.puzzle), 1);
+  assert.deepEqual(bounded.solution, full.solution);
+  assert.throws(() => generatePuzzle('bounded-construction', 0, 0), GenerationBudgetError);
+  for (const budget of [-1, 0.5, NaN, Infinity]) assert.throws(() => generatePuzzle('bad-budget', 0, budget), RangeError);
 });
 
 test('seeded randomness is reproducible, bounded, and shuffling leaves input intact', () => {
