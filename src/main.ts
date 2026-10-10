@@ -1,6 +1,7 @@
 import './style.css';
-import { generateForDifficulty, type RatedPuzzle } from './core/difficulty-generator.ts';
-import { DIFFICULTY_LABELS, type Difficulty } from './core/difficulty.ts';
+import type { RatedPuzzle } from './core/difficulty-generator.ts';
+import type { Difficulty } from './core/difficulty.ts';
+import { startGeneration, type GenerationTask } from './game/generation.ts';
 import type { CellValue } from './core/cube.ts';
 import { enterValue, selectCell, undoMove, type GameState } from './game/state.ts';
 import { beginGeneration, beginPlay, chooseDifficulty, initialSession, updateSession } from './game/session.ts';
@@ -17,6 +18,7 @@ let activePuzzle: RatedPuzzle | null = null;
 let renderer: ReturnType<typeof createCubeRenderer> | null = null;
 let clockInterval: number | null = null;
 let generationId = 0;
+let generationTask: GenerationTask | null = null;
 let failed = false;
 const requestedSeed = new URL(location.href).searchParams.get('seed');
 let firstSeed = validSeed(requestedSeed) ? requestedSeed : null;
@@ -50,6 +52,8 @@ function fatal(error: unknown, message = 'An unexpected error interrupted the pu
   if (failed) return;
   failed = true;
   generationId += 1;
+  generationTask?.cancel();
+  generationTask = null;
   stopClock();
   try { renderer?.dispose(); } finally { showFatal(message); }
 }
@@ -79,6 +83,8 @@ function undo(): void {
 /** Leaving play discards the session and its clock; no background timer or renderer survives. */
 function leavePlay(): void {
   generationId += 1;
+  generationTask?.cancel();
+  generationTask = null;
   stopClock();
   renderer?.dispose();
   renderer = null;
@@ -97,6 +103,7 @@ function newGame(seed?: string): void {
   firstSeed = null;
   leavePlay();
   session = chooseDifficulty();
+  ui.generationNote(null);
   ui.setTime(0);
   ui.setSession(session);
 }
@@ -136,12 +143,28 @@ async function generate(difficulty: Difficulty): Promise<void> {
   if (failed || session.phase !== 'choosing') return;
   const request = ++generationId;
   session = beginGeneration(difficulty);
+  ui.generationNote(null);
   ui.setSession(session);
   ui.setBusy(true);
-  // Paint first. Bounded generation is measured before considering a worker.
-  await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+  const task = startGeneration(pendingSeed, difficulty);
+  generationTask = task;
+  let puzzle: RatedPuzzle;
+  try {
+    puzzle = await task.promise;
+  } catch (error: unknown) {
+    if (failed || request !== generationId) return;
+    generationTask = null;
+    session = chooseDifficulty();
+    ui.setBusy(false);
+    ui.setSession(session);
+    ui.generationNote(error instanceof Error ? error.message : 'The puzzle could not be generated. Please try again.');
+    // A retry gets a fresh seed; the failed seed remains visible in diagnostics.
+    console.warn('[3d sudoku] Generation failed', { seed: pendingSeed, difficulty, error });
+    pendingSeed = freshSeed();
+    return;
+  }
   if (failed || request !== generationId) return;
-  const puzzle = generateForDifficulty(pendingSeed, difficulty);
+  generationTask = null;
   console.info('[3d sudoku] Generated unique rated cube', {
     difficulty, analysis: puzzle.analysis, attempts: puzzle.attempts,
     matched: puzzle.matched, totalGenerationMs: puzzle.totalGenerationMs, ...puzzle.stats,
@@ -157,7 +180,6 @@ async function generate(difficulty: Difficulty): Promise<void> {
   activePuzzle = puzzle;
   session = beginPlay(puzzle, performance.now());
   ui.resetLayer();
-  ui.ratingNote(puzzle.matched ? null : `Closest unique puzzle available: estimated ${DIFFICULTY_LABELS[puzzle.analysis.category]}.`);
   update(session.game!);
   renderer.resetView();
   startClock();

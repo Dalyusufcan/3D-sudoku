@@ -45,12 +45,12 @@ export function createInterface(root: HTMLElement, actions: Actions) {
       <div class="eyebrow">FIND YOUR PACE</div><h1 id="difficulty-title">How deep will you go?</h1>
       <p>Three levels of challenge. The same simple rules.</p>
       <div class="difficulty-options" role="group" aria-label="Choose difficulty">
-        <button data-difficulty="easy"><span class="difficulty-mark" aria-hidden="true">Ⅰ</span><strong>Easy</strong><span>Room to get your bearings.</span><small>More clues · clearer next steps</small></button>
-        <button data-difficulty="medium"><span class="difficulty-mark" aria-hidden="true">Ⅱ</span><strong>Medium</strong><span>Connect a few more dots.</span><small>Fewer clues · deeper deductions</small></button>
-        <button data-difficulty="hard"><span class="difficulty-mark" aria-hidden="true">Ⅲ</span><strong>Hard</strong><span>Make space for a challenge.</span><small>Sparse clues · greater ambiguity</small></button>
-      </div><p class="difficulty-explainer">Rated by clue layout, candidate ambiguity and solving effort.</p><button id="back-button" class="text-button">← Back to start</button>
+        <button data-difficulty="easy"><span class="difficulty-mark" aria-hidden="true">Ⅰ</span><strong>Easy</strong><span>Room to get your bearings.</span><small>Eliminate candidates · find the next number</small></button>
+        <button data-difficulty="medium"><span class="difficulty-mark" aria-hidden="true">Ⅱ</span><strong>Medium</strong><span>Connect a few more dots.</span><small>Read whole lines · connect deductions</small></button>
+        <button data-difficulty="hard"><span class="difficulty-mark" aria-hidden="true">Ⅲ</span><strong>Hard</strong><span>Make space for a challenge.</span><small>Explore alternatives · reason further</small></button>
+      </div><p class="difficulty-explainer">Rated by the reasoning needed to solve, beyond the number of clues.</p><p id="generation-note" class="difficulty-explainer" hidden role="alert"></p><button id="back-button" class="text-button">← Back to start</button>
     </section>
-    <section id="generating-screen" class="start-screen" hidden role="status"><div class="generation-spinner" aria-hidden="true"></div><h1>Finding your next perspective.</h1><p>Checking the challenge. Verifying one solution.</p></section>
+    <section id="generating-screen" class="start-screen" hidden role="status"><div class="generation-spinner" aria-hidden="true"></div><h1>Finding your next perspective.</h1><p>Checking the challenge. Verifying one solution.</p><button id="cancel-generation" class="text-button">Cancel</button></section>
     <main id="play-screen" hidden>
       <div class="workspace">
         <section class="cube-card" aria-label="Interactive 3D puzzle">
@@ -61,7 +61,7 @@ export function createInterface(root: HTMLElement, actions: Actions) {
           <div class="depth-toolbar"><span class="depth-label">DEPTH <strong>Z</strong></span><div id="depth-buttons" class="depth-buttons" role="group" aria-label="Isolate a depth layer"><button data-layer="all" aria-pressed="true">All</button><button data-layer="0" aria-pressed="false" aria-label="Show depth layer 1">1</button><button data-layer="1" aria-pressed="false" aria-label="Show depth layer 2">2</button><button data-layer="2" aria-pressed="false" aria-label="Show depth layer 3">3</button><button data-layer="3" aria-pressed="false" aria-label="Show depth layer 4">4</button></div><span class="depth-help">Isolate a layer to reach inside</span></div>
         </section>
         <aside class="play-panel" aria-label="Puzzle controls">
-          <section class="progress-section"><div class="game-meta"><span id="difficulty-badge">Easy</span><time id="game-timer" aria-label="Elapsed time">00:00</time></div><p id="rating-note" class="muted" hidden></p><div class="section-label">YOUR PROGRESS <span id="progress-percent">50%</span></div><div class="progress-count"><strong id="filled-count">32</strong><span>/ 64 cells filled</span></div><progress id="progress" max="64" value="32" aria-label="Filled cells"></progress><p id="game-status" role="status" aria-live="polite">Preparing your cube…</p></section>
+          <section class="progress-section"><div class="game-meta"><span id="difficulty-badge">Easy</span><time id="game-timer" aria-label="Elapsed time">00:00</time></div><div class="section-label">YOUR PROGRESS <span id="progress-percent">50%</span></div><div class="progress-count"><strong id="filled-count">32</strong><span>/ 64 cells filled</span></div><progress id="progress" max="64" value="32" aria-label="Filled cells"></progress><p id="game-status" role="status" aria-live="polite">Preparing your cube…</p></section>
           <section class="focus-section"><div class="section-label">CELL FOCUS <button id="exit-button" class="text-button" disabled>Exit <kbd>Esc</kbd></button></div><div id="selection-heading" class="selection-heading">A little focus goes a long way.</div><p id="selection-detail" class="muted">Tap any cell. Its three intersecting lines will appear here.</p><div id="line-strips"></div><div id="focus-placeholder" class="focus-placeholder" aria-hidden="true"><div class="mini-cross"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><span>One cell. Three connected lines.</span></div></section>
           <section class="entry-section"><div class="section-label">PLACE A NUMBER <span class="keyboard-note">KEYS 1–4</span></div><div class="number-pad" role="group" aria-label="Enter a value"><button data-value="1" disabled>1</button><button data-value="2" disabled>2</button><button data-value="3" disabled>3</button><button data-value="4" disabled>4</button></div><div class="edit-actions"><button id="erase-button" class="small-button" disabled>⌫ Erase</button><button id="undo-button" class="small-button" disabled>↶ Undo</button><button id="restart-button" class="small-button">Restart</button></div></section>
           <div class="cell-key"><span><i class="clue-key"></i>Given</span><span><i class="entry-key"></i>Your entry</span><span><i class="conflict-key"></i>Conflict</span></div>
@@ -133,6 +133,7 @@ export function createInterface(root: HTMLElement, actions: Actions) {
   get('#result-new-button').addEventListener('click', () => actions.newPuzzle());
   get('#result-home-button').addEventListener('click', actions.home);
   get('#back-button').addEventListener('click', actions.home);
+  get('#cancel-generation').addEventListener('click', actions.home);
   get('.brand').addEventListener('click', event => { event.preventDefault(); actions.home(); });
   root.querySelectorAll<HTMLButtonElement>('[data-difficulty]').forEach(button => {
     button.addEventListener('click', () => {
@@ -253,8 +254,8 @@ export function createInterface(root: HTMLElement, actions: Actions) {
       if (phase === 'choosing') get<HTMLButtonElement>('[data-difficulty="easy"]').focus({ preventScroll: true });
     },
     setTime(elapsedMs: number): void { get('#game-timer').textContent = formatTime(elapsedMs); },
-    ratingNote(message: string | null): void {
-      const note = get<HTMLElement>('#rating-note');
+    generationNote(message: string | null): void {
+      const note = get<HTMLElement>('#generation-note');
       note.hidden = message === null;
       note.textContent = message;
     },
